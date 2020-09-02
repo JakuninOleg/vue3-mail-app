@@ -1,0 +1,72 @@
+<template>
+  <table class="mail-table">
+    <tbody>
+      <tr
+        v-for="email in unarchivedEMails"
+        :key="email.id"
+        :class="['clickable', email.read ? 'read' : '']"
+        @click="openEmail(email)"
+      >
+        <td>
+          <input type="checkbox" />
+        </td>
+        <td>{{ email.from }}</td>
+        <td>
+          <p>
+            <strong>{{email.subject}}</strong>
+            - {{email.body}}
+          </p>
+        </td>
+        <td class="date">{{format(new Date(email.sentAt), 'do MMM yy')}}</td>
+        <td>
+          <button @click="archiveEmail(email)">Archive</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <MailView v-if="openedEmail" :email="openedEmail"></MailView>
+</template>
+
+<script>
+import { format } from "date-fns";
+import axios from "axios";
+import MailView from "@/components/MailView.vue";
+
+export default {
+  async setup() {
+    let { data: emails } = await axios.get("http://localhost:3000/emails");
+    return {
+      format,
+      emails,
+      openedEmail: null
+    };
+  },
+  components: {
+    MailView
+  },
+  computed: {
+    sortedEMails() {
+      return this.emails.sort((a, b) => {
+        return a.sentAt < b.sentAt ? 1 : -1;
+      });
+    },
+    unarchivedEMails() {
+      return this.sortedEMails.filter(e => !e.archived);
+    }
+  },
+  methods: {
+    openEmail(email) {
+      email.read = true;
+      this.updateEmail(email);
+      this.openedEmail = email;
+    },
+    archiveEmail(email) {
+      email.archived = true;
+      this.updateEmail(email);
+    },
+    updateEmail(email) {
+      axios.put(`http://localhost:3000/emails/${email.id}`, email);
+    }
+  }
+};
+</script>
